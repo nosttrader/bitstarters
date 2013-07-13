@@ -22,6 +22,7 @@ References:
 */
 
 var fs = require('fs');
+var restler = require('restler');
 var program = require('commander');
 var cheerio = require('cheerio');
 var HTMLFILE_DEFAULT = "index.html";
@@ -38,6 +39,10 @@ var assertFileExists = function(infile) {
 
 var cheerioHtmlFile = function(htmlfile) {
     return cheerio.load(fs.readFileSync(htmlfile));
+};
+
+var downloadFile = function(url) {
+    return url;
 };
 
 var loadChecks = function(checksfile) {
@@ -65,10 +70,21 @@ if(require.main == module) {
     program
         .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
         .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
-        .parse(process.argv);
-    var checkJson = checkHtmlFile(program.file, program.checks);
-    var outJson = JSON.stringify(checkJson, null, 4);
-    console.log(outJson);
+        .option('-u, --url <url>', 'URL of remote server', downloadFile)
+	.parse(process.argv);
+    if (program.url) {
+	restler.get(program.url).on('complete', function(data) {
+            fs.writeFileSync('temp.dat', data);
+	    var checkJson = checkHtmlFile('temp.dat', program.checks);
+            var outJson = JSON.stringify(checkJson, null, 4);
+            console.log(outJson);
+            fs.unlinkSync('temp.dat');
+	});
+    } else {
+	var checkJson = checkHtmlFile(program.file, program.checks);
+	var outJson = JSON.stringify(checkJson, null, 4);
+	console.log(outJson);
+    }
 } else {
     exports.checkHtmlFile = checkHtmlFile;
 }
